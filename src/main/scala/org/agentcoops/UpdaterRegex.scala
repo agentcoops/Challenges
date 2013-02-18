@@ -3,8 +3,20 @@ import Scalaz._
 import scala.util.Random
 import org.agentcoops.updaterRegex.trie._
 
+/* Defines a state machine object model for a limited regular expression
+ * grammar. State machine works with the trie data structure to find 
+ * corrections for an input term.
+ *
+ * Library also offers rudimentary support capable of generating test cases
+ * for application with CorrectionRegex.testCaseForWord(word: String) method.
+ * 
+ * Errors checked:
+ * 1) capitalization errors: x -> (x|X)
+ * 2) mistaken vowels: a -> (a|A|e|E|i|I|...)
+ * 3) repeated characters: dd -> (d)+
+ * 4) any combination: aA -> (a|A|e|E|i|I|...)+
+ */
 package org.agentcoops.updaterRegex {
-
 
 // Defines a simple object model for Updater-regex state machine.
 abstract trait RegexNode {
@@ -86,18 +98,24 @@ case class AcceptState() extends RegexNode {
 }
 
 object CorrectionRegex {
+  // Core regex API.
   def apply(word: String) = new CorrectionRegex(word)
 
-  val vowels = Set("a", "A", "e", "E", "i", "I", "o", "O", "u", "U")
-  def isVowel(character: String): Boolean = 
-    CorrectionRegex.vowels contains character 
+  def testCaseFromWord(word: String) = {
+    // potentially add some duplicates to word.
+    val newWord =   
+      if (Random.nextBoolean)
+        wordWithRandomDuplicates(word, Random.nextInt(word.length))
+      else word
+    val regex = compileRegex(newWord)
+   
+    // Sorry, terribly hacky implementation of extra credit. Basically, 
+    // if the stack gets crazy, just return newWord. it's extra credit? 
+    try {regex.foldRight("")((newValue, oldValue) => newValue + oldValue)}
+    catch {case _: Throwable => newWord}
+  }
 
-  def generateCapitalOptions(character: String) = 
-    Set(character.toUpperCase, character.toLowerCase)
-    
-  def generateCharacterOptions(character: String) = 
-    if (isVowel(character)) CorrectionRegex.vowels 
-    else generateCapitalOptions(character)  
+  def testCasesFromWords(words: List[String]) = words map testCaseFromWord
   
   /* Very imparative implementation of the regex compiler. Goes backwards through
    * the input string, building up a regex for the cases indicated in problem:
@@ -137,6 +155,18 @@ object CorrectionRegex {
     resultsSoFar
   }
 
+  // Data and helper methods.
+  val vowels = Set("a", "A", "e", "E", "i", "I", "o", "O", "u", "U")
+  def isVowel(character: String): Boolean = 
+    CorrectionRegex.vowels contains character 
+
+  def generateCapitalOptions(character: String) = 
+    Set(character.toUpperCase, character.toLowerCase)
+    
+  def generateCharacterOptions(character: String) = 
+    if (isVowel(character)) CorrectionRegex.vowels 
+    else generateCapitalOptions(character)  
+
   def wordWithRandomDuplicates(word: String, number: Int) = {
     var count = number
     val wordChars = word.split("").drop(1)
@@ -153,22 +183,6 @@ object CorrectionRegex {
     val newWord = newWordChars.mkString("")
     newWord
   }
-
-  def testCaseFromWord(word: String) = {
-    // potentially add some duplicates to word.
-    val newWord =   
-      if (Random.nextBoolean)
-        wordWithRandomDuplicates(word, Random.nextInt(word.length))
-      else word
-    val regex = compileRegex(newWord)
-   
-    // sorry, terribly hacky implementation---foldRight is really bad for this!
-    // basically, if the stack gets crazy, just return newWord. it's extra credit? 
-    try {regex.foldRight("")((newValue, oldValue) => newValue + oldValue)}
-    catch {case _: Throwable => newWord}
-  }
-
-  def testCasesFromWords(words: List[String]) = words map testCaseFromWord
 }
 
 class CorrectionRegex(word: String) {
@@ -248,7 +262,6 @@ class CorrectionRegex(word: String) {
 }
 
 object SpellcheckTest {
-
   // test dictionary has all and only the correct words for test cases.
   val trie = Trie("sample.dict")
 
@@ -262,8 +275,7 @@ object SpellcheckTest {
     }
   }
 
-  // Ok, so I just roled my own little test runner for this---obviously specs, etc 
-  // would be much better, but this suffices.
+  // Very primitive "test suite."
   def runTests() = {
       println("Testing...")
       testWord("sandwich", "sandwich")

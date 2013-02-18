@@ -2,7 +2,11 @@ import scalaz._
 import Scalaz._
 import scala.io.Source
 
+/* Defines a very rudimentary trie data structure using the scalaz tree 
+ * library. Builds up the structure from a text file with one word per line.  
+ */
 package org.agentcoops.updaterRegex.trie {
+
   object Trie {
     def apply(loc: String) = {
       val trie = new Trie
