@@ -1,1 +1,1 @@
-Commandline application can be accessed by executing "sbt run."
+Run CLI to spellcheck with "sbt run."
